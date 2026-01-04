@@ -1,0 +1,1057 @@
+*&---------------------------------------------------------------------*
+*& Report  ZSHIPMENT_DATA_PRO
+*&
+*&---------------------------------------------------------------------*
+*&
+*&
+*&---------------------------------------------------------------------*
+REPORT ZSHIPMENT_DATA_PRO.
+
+TYPE-POOLS: slis.
+
+TABLES : LFA1 , TVTKT,VTTK,VTTP,VFKP,VBPA,LIKP.
+
+TYPES: BEGIN OF str,
+         lifnr  TYPE lfa1-lifnr,
+         NAME1  TYPE LFA1-NAME1,
+         VSART  TYPE VTTK-VSART, "SHTYP TYPE vttk-SHTYP,
+         BEZEI  TYPE T173T-BEZEI, "BEZEI TYPE TVTKT-BEZEI,
+         EXTI1  TYPE VTTK-EXTI1,
+         SIGNI  TYPE VTTK-SIGNI,
+         TKNUM  TYPE VTTK-TKNUM,
+         KUNNR  TYPE KNA1-KUNNR,
+         NAME2  TYPE KNA1-NAME1,
+         VBELN  TYPE VTTP-VBELN,
+         TPNUM  TYPE VFKP-REPOS, "VTTP-TPNUM,
+         BUDAT  TYPE VFKP-BUDAT,
+         FKNUM  TYPE VFKP-FKNUM,
+         FKPOS  TYPE VFKP-FKPOS,
+         posnr  TYPE lips-posnr,
+         MATNR  TYPE LIPS-MATNR,
+         arktx  TYPE LIPS-ARKTX ,
+         MFRGR  TYPE LIPS-MFRGR,
+         BEZEI2 TYPE TMFGT-BEZEI,
+         LFIMG  TYPE LIPS-LFIMG,
+         MEINS  TYPE LIPS-MEINS,
+         VOLUM  TYPE LIPS-VOLUM,
+         VOLEH  TYPE LIPS-VOLEH,
+         KBETR  TYPE KONV-KBETR,
+         kwert  TYPE konv-kwert,
+         WERKS  TYPE LIPS-WERKS,
+         LGORT  TYPE LIPS-LGORT,
+         DALEN  TYPE VTTK-DALEN,
+         LZONE  TYPE KNA1-LZONE,
+         VTEXT  TYPE TZONT-VTEXT,
+         so     TYPE vbap-vbeln,
+         so_no  TYPE vbap-posnr,
+         KNUMV  TYPE KNUMV,
+         NETPR  TYPE VFSI-NETPR,
+         NETWR  TYPE VFSI-NETWR,
+         NETWR_VBRP  TYPE VBRP-NETWR,
+         MWSBP_VBRP   TYPE VBRP-MWSBP,
+         total_VBRP type VBRP-NETWR,
+         PAYER  TYPE VBAK-KNKLI ,  "PAYER
+          PAYER_N TYPE KNA1-NAME1 ,"PAYER name
+         ERDAT   TYPE  LIKP-ERDAT,
+          BUKRS  TYPE VBRP-BUKRS_ANA,
+         CAR type  TDLINE,  " السيارة
+         DRIVER type  TDLINE,  " السائق
+         VGBEL type lips-VGBEL,
+          BWART  type LIPS-BWART,
+*         FKPOS   TYPE FKPOS,
+*         FKNUM   TYPE FKNUM,
+*         NETWR   TYPE NETWR,
+         EBELN   TYPE VFKP-EBELN,
+         LBLNI   TYPE VFKP-LBLNI,
+         ERNAM   TYPE VFKP-ERNAM,
+         FKPTY   TYPE VFKP-FKPTY,
+         KALSM   TYPE VFKP-KALSM,
+         KOSTY   TYPE VFKP-KOSTY,
+         KNTTP   TYPE VFKP-KNTTP,
+       END OF str.
+
+DATA: it_output    TYPE TABLE OF str with HEADER LINE ,
+      wa_output    type str,
+
+      it_output1    TYPE TABLE OF str with HEADER LINE ,
+      wa_output1    type str,
+
+      it_fieldcat  TYPE slis_t_fieldcat_alv,
+      wa_fieldcat  TYPE slis_fieldcat_alv,
+      GD_TAB_GROUP TYPE SLIS_T_SP_GROUP_ALV,
+      GD_LAYOUT    TYPE SLIS_LAYOUT_ALV,
+      GD_REPID     LIKE SY-REPID,
+      MWSKZ        TYPE RSEG-MWSKZ.
+data:
+  gs_print_k    TYPE slis_print_alv,
+  gs_print_p    TYPE slis_print_alv,
+  gs_layout_k   TYPE slis_layout_alv,
+  gs_layout_p   TYPE slis_layout_alv,
+  gt_sort_k     TYPE slis_t_sortinfo_alv,
+  gt_sort_p     TYPE slis_t_sortinfo_alv,
+  gt_filter_k   TYPE slis_t_filter_alv,
+  gt_filter_p   TYPE slis_t_filter_alv,
+  gt_fieldcat_k TYPE slis_t_fieldcat_alv,
+  gt_fieldcat_p TYPE slis_t_fieldcat_alv ,
+  lt_event_exit TYPE slis_t_event_exit.
+gs_layout_k-colwidth_optimize = 'X'.
+DATA gs_variant TYPE disvariant.
+gs_variant-report = sy-repid.
+
+DATA : so_typ TYPE vbak-auart,
+        text1  TYPE TABLE OF tline,
+        text2  TYPE TABLE OF tline.
+      Data: V_VBELN1 TYPE THEAD-TDNAME.
+          DATA : it_tlines    TYPE TABLE OF tline,
+               is_tlines    TYPE tline,
+               lv_char(500) TYPE c,
+               v_text TYPE string,
+               w_lines TYPE i,
+               w_idx   TYPE i.
+
+
+               DATA BEGIN OF TEXTLINES OCCURS 10.
+                    INCLUDE STRUCTURE TLINE.
+                    DATA END OF TEXTLINES.
+
+              DATA BEGIN OF TEXTHEADER.
+                    INCLUDE STRUCTURE THEAD.
+                     DATA END OF TEXTHEADER.
+
+
+INITIALIZATION.
+*Selection Screen*
+
+  SELECT-OPTIONS:  lifnr for lfa1-lifnr,
+*                  NAME  FOR LFA1-NAME1 ,
+                   SHTYP  FOR   vttk-SHTYP,
+                   tknum  FOR   VTTK-TKNUM,
+                   DALEN  FOR   VTTK-DALEN,
+                   VBELN  FOR   VTTP-VBELN,
+                   KUNNR  FOR   VBPA-KUNNR,
+                   BUDAT  FOR   VFKP-BUDAT,
+                   ERDAT  FOR  LIKP-ERDAT,
+                   PAYER  FOR VBPA-KUNNR,
+                   VKORG FOR likp-VKORG,
+                   WERKS FOR LIKP-WERKS OBLIGATORY.
+
+START-OF-SELECTION.
+
+
+  PERFORM FETCH_DATA.
+  PERFORM BUILD_CATALOG.
+  PERFORM REUSE_ALV.
+
+*&---------------------------------------------------------------------*
+*&      Form  FETCH_DATA
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+*  -->  p1        text
+*  <--  p2        text
+*----------------------------------------------------------------------*
+FORM FETCH_DATA .
+    DATA : V_CAR TYPE TDLINE,V_DRIVER TYPE TDLINE.
+  DATA : LV_REPOS TYPE VFKP-REPOS.
+  DATA : LV_INDEX TYPE SY-TABIX.
+
+  DATA : IT_OUTPUT_TEMP TYPE STANDARD TABLE OF STR WITH HEADER LINE,
+        IT_OUTPUT_TEMP_LIPS TYPE STANDARD TABLE OF STR WITH HEADER LINE,
+        WA_OUTPUT_TEMP_LIPS TYPE STR.
+  DATA : IT_OUTPUT_TEMP_2 TYPE STANDARD TABLE OF STR WITH HEADER LINE.
+  RANGES : VBELN_RANGE FOR LIKP-VBELN.
+
+
+* (  LIKP
+*    inner join LIPS on LIPS~VBELN = LIKP~VBELN
+*    left join VTTP on LIKP~VBELN = VTTP~VBELN
+*    inner join VTTK on VTTP~TKNUM = VTTK~TKNUM
+*    inner join LFA1 on LFA1~LIFNR = VTTK~TDLNR
+*    inner join KNA1 on KNA1~KUNNR = LIKP~KUNNR )
+ break yalsabri.
+ select
+       KNA1~KUNNR KNA1~NAME1 AS NAME2 LIPS~VBELN
+          lips~posnr LIPS~MATNR LIPS~ARKTX LIPS~MFRGR LIPS~LFIMG LIPS~MEINS
+         LIPS~VOLUM LIPS~VOLEH LIPS~LGORT LIPS~WERKS
+        KNA1~LZONE
+            kna1~kunnr as payer kna1~name1 as payer_n LIKP~ERDAT
+          LIPS~VGBEL
+          LIPS~BWART
+  from
+    (  LIKP
+    inner join LIPS on LIPS~VBELN = LIKP~VBELN
+    inner join KNA1 on KNA1~KUNNR = LIKP~KUNNR )
+       INTO CORRESPONDING FIELDS OF TABLE IT_OUTPUT_TEMP_LIPS
+       where
+             LIKP~ERDAT IN ERDAT
+         AND kna1~kunnr IN PAYER
+         AND likp~VBELN IN VBELN
+         and likp~VKORG in VKORG
+         AND LIPS~WERKS IN WERKS.
+
+
+  select LFA1~LIFNR LFA1~NAME1 VTTK~TKNUM  VTTK~VSART VTTK~EXTI1 VTTK~SIGNI KNA1~KUNNR KNA1~NAME1 AS NAME2 VTTP~VBELN VTTP~TPNUM
+          lips~posnr LIPS~MATNR LIPS~ARKTX LIPS~MFRGR LIPS~LFIMG LIPS~MEINS LIPS~VOLUM LIPS~VOLEH LIPS~LGORT LIPS~WERKS VTTK~DALEN KNA1~LZONE
+            kna1~kunnr as payer kna1~name1 as payer_n LIKP~ERDAT
+          LIPS~VGBEL
+          LIPS~BWART
+  from
+     ( VTTK
+         inner join LFA1
+         on  LFA1~LIFNR = VTTK~TDLNR
+         inner join VTTP
+         on  VTTP~TKNUM = VTTK~TKNUM
+*         INNER JOIN VFKP ON  VTTP~TKNUM = VFKP~REBEL
+         inner join LIKP
+         on  LIKP~VBELN = VTTP~VBELN
+         inner join LIPS
+         on  LIPS~VBELN = LIKP~VBELN
+         inner join KNA1
+                 on  KNA1~KUNNR = LIKP~KUNNR )
+*
+*
+*         inner join VBRP  ON   LIPS~VBELN = VBRP~VGBEL     AND LIPS~POSNR = VBRP~VGPOS
+       INTO CORRESPONDING FIELDS OF TABLE IT_OUTPUT
+       where VTTK~TKNUM in TKNUM
+         and VTTK~SHTYP in SHTYP
+         and VTTK~DALEN in DALEN
+         AND LFA1~LIFNR IN LIFNR
+         AND VTTP~VBELN IN VBELN
+         and   LIKP~ERDAT IN ERDAT
+         AND kna1~kunnr IN PAYER
+         and likp~VKORG in VKORG
+         AND LIPS~WERKS IN WERKS
+          .
+
+
+select LFA1~LIFNR LFA1~NAME1 VTTK~TKNUM  VTTK~VSART VTTK~EXTI1 VTTK~SIGNI KNA1~KUNNR KNA1~NAME1 AS NAME2 VTTP~VBELN VTTP~TPNUM
+          lips~posnr LIPS~MATNR LIPS~ARKTX LIPS~MFRGR LIPS~LFIMG LIPS~MEINS LIPS~VOLUM LIPS~VOLEH LIPS~LGORT LIPS~WERKS VTTK~DALEN KNA1~LZONE
+            kna1~kunnr as payer kna1~name1 as payer_n LIKP~ERDAT
+             VBRP~NETWR as NETWR_VBRP    VBRP~MWSBP as MWSBP_VBRP
+             VBRP~BUKRS_ANA AS BUKRS
+  from ( VTTK
+         inner join LFA1
+         on  LFA1~LIFNR = VTTK~TDLNR
+         inner join VTTP
+         on  VTTP~TKNUM = VTTK~TKNUM
+         inner join LIKP
+         on  LIKP~VBELN = VTTP~VBELN
+         inner join LIPS
+         on  LIPS~VBELN = LIKP~VBELN
+         inner join KNA1
+                 on  KNA1~KUNNR = LIKP~KUNNR )
+         inner join VBRP  ON   LIPS~VBELN = VBRP~VGBEL     AND LIPS~POSNR = VBRP~VGPOS
+       INTO CORRESPONDING FIELDS OF TABLE IT_OUTPUT1
+       where VTTK~TKNUM in TKNUM
+         and VTTK~SHTYP in SHTYP
+         and VTTK~DALEN in DALEN
+         AND LFA1~LIFNR IN LIFNR
+         AND VTTP~VBELN IN VBELN
+         and   LIKP~ERDAT IN ERDAT
+         AND kna1~kunnr IN PAYER
+          and likp~VKORG in VKORG
+         AND LIPS~WERKS IN WERKS.
+
+  IF BUDAT[] IS NOT INITIAL.
+    IT_OUTPUT_TEMP[] = IT_OUTPUT[].
+    SELECT FKNUM FKPOS FKNUM NETWR EBELN LBLNI ERNAM FKPTY KALSM KOSTY KNTTP FROM VFKP INTO CORRESPONDING FIELDS OF TABLE IT_OUTPUT
+      FOR ALL ENTRIES IN IT_OUTPUT_TEMP
+      WHERE REBEL = IT_OUTPUT_TEMP-TKNUM
+*      AND   REPOS = IT_OUTPUT_TEMP-TPNUM
+    AND   BUDAT IN BUDAT.
+    IF SY-SUBRC = 0.
+      SORT IT_OUTPUT BY FKNUM FKPOS.
+      SELECT REBEL AS LOW FROM VFKN INTO CORRESPONDING FIELDS OF TABLE VBELN_RANGE
+        FOR ALL ENTRIES IN IT_OUTPUT
+        WHERE FKNUM  = IT_OUTPUT-FKNUM
+      AND   FKPOS  = IT_OUTPUT-FKPOS.
+      SORT VBELN_RANGE BY LOW.
+      LOOP AT VBELN_RANGE.
+        VBELN_RANGE-SIGN = 'I'.
+        VBELN_RANGE-OPTION = 'EQ'.
+        MODIFY VBELN_RANGE TRANSPORTING SIGN OPTION.
+        CLEAR : VBELN_RANGE.
+      ENDLOOP.
+      SORT IT_OUTPUT_TEMP BY VBELN.
+      DELETE IT_OUTPUT_TEMP WHERE VBELN NOT IN VBELN_RANGE.
+      FREE : IT_OUTPUT.
+      IT_OUTPUT[] = IT_OUTPUT_TEMP[].
+    ENDIF.
+  ENDIF.
+
+  DELETE IT_OUTPUT WHERE KUNNR NOT IN KUNNR.
+  DATA : IT_T173T TYPE STANDARD TABLE OF T173T WITH HEADER LINE,
+         IT_TMFGT TYPE STANDARD TABLE OF TMFGT WITH HEADER LINE,
+         IT_TZONT TYPE STANDARD TABLE OF TZONT WITH HEADER LINE,
+         IT_VBPA  TYPE STANDARD TABLE OF VBPA WITH HEADER LINE,
+         IT_VBFA  TYPE STANDARD TABLE OF VBFA WITH HEADER LINE,
+         IT_VBAK  TYPE STANDARD TABLE OF VBAK WITH HEADER LINE,
+         IT_KONV  TYPE STANDARD TABLE OF KONV WITH HEADER LINE,
+         IT_VFSI  TYPE STANDARD TABLE OF VFSI WITH HEADER LINE.
+*  BREAK HSA-ABAP.
+  SELECT * FROM T173T INTO TABLE IT_T173T
+    FOR ALL ENTRIES IN IT_OUTPUT
+    WHERE SPRAS = SY-LANGU
+  AND   VSART = IT_OUTPUT-VSART.
+  SORT IT_T173T BY VSART.
+
+
+  SELECT * FROM TMFGT INTO TABLE IT_TMFGT
+    FOR ALL ENTRIES IN IT_OUTPUT
+    WHERE SPRAS = SY-LANGU
+  AND   MFRGR = IT_OUTPUT-MFRGR.
+  SORT IT_TMFGT BY MFRGR.
+
+  SELECT * FROM TZONT INTO TABLE IT_TZONT
+    FOR ALL ENTRIES IN IT_OUTPUT
+  WHERE ZONE1 = IT_OUTPUT-LZONE.
+  SORT IT_TZONT BY ZONE1.
+
+*  SELECT * FROM VBPA INTO TABLE IT_VBPA
+*    FOR ALL ENTRIES IN IT_OUTPUT
+*    WHERE PARVW = 'WE'
+*    AND   VBELN = IT_OUTPUT-VBELN
+*  AND   KUNNR = IT_OUTPUT-KUNNR.
+*  SORT IT_VBPA BY VBELN KUNNR.
+
+  SELECT * FROM VBFA INTO TABLE IT_VBFA
+    WHERE VBTYP_V EQ 'C'
+  AND   VBTYP_N EQ 'J'.
+  SORT IT_VBFA BY VBELN POSNN.
+
+  SELECT * FROM VBAK INTO TABLE IT_VBAK WHERE VKORG in VKORG.
+  SORT IT_VBAK BY VBELN.
+
+  SELECT * FROM KONV INTO TABLE IT_KONV
+  WHERE   KSCHL EQ 'ZPA1'.
+  SORT IT_KONV BY KNUMV KPOSN.
+
+  SELECT * FROM VFSI INTO TABLE IT_VFSI.
+  SORT IT_VFSI BY VBELN POSNR KNUMV KPOSN.
+  SORT IT_OUTPUT BY VBELN.
+
+
+CLEAR WA_OUTPUT.
+LOOP AT IT_OUTPUT INTO WA_OUTPUT.
+  DELETE IT_OUTPUT_TEMP_LIPS WHERE VBELN = WA_OUTPUT-VBELN .
+endloop.
+
+clear WA_OUTPUT_TEMP_LIPS.
+loop at IT_OUTPUT_TEMP_LIPS into wa_OUTPUT_TEMP_LIPS.
+  append wa_OUTPUT_TEMP_LIPS to IT_OUTPUT.
+  endloop.
+*}   INSERT
+
+  LOOP AT IT_OUTPUT .
+    LV_INDEX = SY-TABIX.
+    SELECT SINGLE FKNUM FKPOS FKNUM NETWR EBELN LBLNI ERNAM FKPTY KALSM KOSTY KNTTP
+      FROM VFKP INTO ( IT_OUTPUT-FKNUM ,IT_OUTPUT-FKPOS ,IT_OUTPUT-FKNUM ,IT_OUTPUT-NETWR
+                      ,IT_OUTPUT-EBELN ,IT_OUTPUT-LBLNI ,IT_OUTPUT-ERNAM, IT_OUTPUT-FKPTY
+                           ,IT_OUTPUT-KALSM ,IT_OUTPUT-KOSTY, IT_OUTPUT-KNTTP )
+      WHERE REBEL = IT_OUTPUT-TKNUM
+      AND REPOS = IT_OUTPUT-TPNUM
+    AND   BUDAT IN BUDAT.
+    READ TABLE IT_T173T WITH KEY VSART = IT_OUTPUT-VSART BINARY SEARCH.
+    IT_OUTPUT-BEZEI = IT_T173T-BEZEI.
+    CLEAR : IT_T173T.
+
+    READ TABLE IT_TMFGT WITH KEY MFRGR = IT_OUTPUT-MFRGR BINARY SEARCH.
+    IT_OUTPUT-BEZEI2 = IT_TMFGT-BEZEI.
+    CLEAR : IT_TMFGT.
+
+    READ TABLE IT_TZONT WITH KEY ZONE1 = IT_OUTPUT-LZONE BINARY SEARCH.
+    IT_OUTPUT-VTEXT = IT_TZONT-VTEXT.
+    CLEAR : IT_TZONT.
+
+    READ TABLE IT_VBFA WITH KEY VBELN = IT_OUTPUT-VBELN POSNN = IT_OUTPUT-POSNR BINARY SEARCH.
+    IT_OUTPUT-SO = IT_VBFA-VBELV.
+    IT_OUTPUT-SO_NO = IT_VBFA-POSNV.
+    CLEAR : IT_VBFA.
+
+    READ TABLE IT_VBAK WITH KEY VBELN = IT_OUTPUT-SO BINARY SEARCH.
+    IT_OUTPUT-KNUMV = IT_VBAK-KNUMV.
+    CLEAR : IT_VBAK.
+
+    READ TABLE IT_KONV WITH KEY KNUMV = IT_OUTPUT-KNUMV KPOSN = IT_OUTPUT-SO_NO BINARY SEARCH.
+    IT_OUTPUT-KBETR = IT_KONV-KBETR.
+    IT_OUTPUT-KWERT = IT_KONV-KWERT.
+    CLEAR : IT_KONV.
+
+    READ TABLE IT_VFSI WITH KEY VBELN = IT_OUTPUT-VBELN POSNR = IT_OUTPUT-POSNR BINARY SEARCH.
+    IT_OUTPUT-NETPR = IT_VFSI-NETPR.
+    IT_OUTPUT-NETWR = IT_VFSI-NETWR.
+    CLEAR : IT_VFSI.
+
+*    select SINGLE VBAK~KNKLI INTO IT_OUTPUT-payer from VBAK WHERE VBELN = IT_OUTPUT-VBELN and KUNNR = IT_OUTPUT-KUNNR.
+
+*       select SINGLE KNA1~NAME1 from KNA1 into IT_OUTPUT-payer_n WHERE KUNNR = IT_OUTPUT-payer.
+*--------------------------------   READ FROM VBRP
+*BREAK YALSABRI.
+CLEAR wa_output1.
+READ TABLE IT_OUTPUT1 WITH KEY LIFNR   = IT_OUTPUT-LIFNR
+                               TKNUM   = IT_OUTPUT-TKNUM
+                               VBELN   = IT_OUTPUT-VBELN
+                               MATNR   = IT_OUTPUT-MATNR
+                               posnr   = IT_OUTPUT-posnr
+                               INTO wa_output1.
+ IT_OUTPUT-NETWR_VBRP  =  wa_output1-NETWR_VBRP .
+  IT_OUTPUT-MWSBP_VBRP  = wa_output1-MWSBP_VBRP.
+  IT_OUTPUT-total_VBRP = IT_OUTPUT-NETWR_VBRP + IT_OUTPUT-MWSBP_VBRP.
+*----------------------------
+*  break yalsabri.
+*  *   ------------------------------ driver and car name
+
+   IF ( wa_output1-BUKRS EQ '1100' ) OR ( wa_output1-BUKRS EQ '1200' ) OR ( wa_output1-BUKRS EQ '1300' )
+    OR ( wa_output1-BUKRS EQ '3300' ) OR ( wa_output1-BUKRS EQ '3100' ).
+    V_VBELN1 = wa_output1-VBELN.
+CALL FUNCTION 'READ_TEXT'
+       EXPORTING
+            OBJECT                  = 'VBBK'
+            ID                      = 'Z001'
+            LANGUAGE                = 'A'
+            NAME                    = V_VBELN1"'011700047'"VBELV_OR "V_VBELN "TR
+       IMPORTING
+            HEADER                  = TEXTHEADER
+       TABLES
+            LINES                   = Text1"it_tlines
+       EXCEPTIONS
+            ID                      = 1
+            LANGUAGE                = 2
+            NAME                    = 3
+            NOT_FOUND               = 4
+            OBJECT                  = 5
+            REFERENCE_CHECK         = 6
+            WRONG_ACCESS_TO_ARCHIVE = 7
+            OTHERS                  = 8.
+
+
+*  ---------------      GET DRIVER NAME
+       CLEAR : is_tlines ,
+       lv_char,
+       v_text ,
+       w_lines ,
+       w_idx   .
+
+CALL FUNCTION 'READ_TEXT'
+       EXPORTING
+            OBJECT                  = 'VBBK'
+            ID                      = 'Z002'
+            LANGUAGE                = 'A'
+            NAME                    = V_VBELN1"'011700047'"VBELV_OR "V_VBELN "TR
+       IMPORTING
+            HEADER                  = TEXTHEADER
+       TABLES
+            LINES                   = Text2"it_tlines
+       EXCEPTIONS
+            ID                      = 1
+            LANGUAGE                = 2
+            NAME                    = 3
+            NOT_FOUND               = 4
+            OBJECT                  = 5
+            REFERENCE_CHECK         = 6
+            WRONG_ACCESS_TO_ARCHIVE = 7
+            OTHERS                  = 8.
+
+
+*        ----------------_______---------------
+
+  ELSEIF wa_output1-BUKRS  EQ '1900' .
+*    BREAK YALSABRI.
+     V_VBELN1 = wa_output1-VBELN.
+CALL FUNCTION 'READ_TEXT'
+       EXPORTING
+            OBJECT                  = 'VBBK'
+            ID                      = 'Z008'
+            LANGUAGE                = 'A'
+            NAME                    = V_VBELN1"'011700047'"VBELV_OR "V_VBELN "TR
+       IMPORTING
+            HEADER                  = TEXTHEADER
+       TABLES
+            LINES                   = Text1"it_tlines
+       EXCEPTIONS
+            ID                      = 1
+            LANGUAGE                = 2
+            NAME                    = 3
+            NOT_FOUND               = 4
+            OBJECT                  = 5
+            REFERENCE_CHECK         = 6
+            WRONG_ACCESS_TO_ARCHIVE = 7
+            OTHERS                  = 8.
+
+
+
+
+*  ---------------      GET رالسائق
+       CLEAR : is_tlines ,
+       lv_char,
+       v_text ,
+       w_lines ,
+       w_idx   .
+
+CALL FUNCTION 'READ_TEXT'
+       EXPORTING
+            OBJECT                  = 'VBBK'
+            ID                      = 'Z021'
+            LANGUAGE                = 'A'
+            NAME                    = V_VBELN1"'011700047'"VBELV_OR "V_VBELN "TR
+       IMPORTING
+            HEADER                  = TEXTHEADER
+       TABLES
+            LINES                   = Text2"it_tlines
+       EXCEPTIONS
+            ID                      = 1
+            LANGUAGE                = 2
+            NAME                    = 3
+            NOT_FOUND               = 4
+            OBJECT                  = 5
+            REFERENCE_CHECK         = 6
+            WRONG_ACCESS_TO_ARCHIVE = 7
+            OTHERS                  = 8.
+
+ ELSE.
+ V_VBELN1 =  IT_OUTPUT-VBELN.
+CALL FUNCTION 'READ_TEXT'
+       EXPORTING
+            OBJECT                  = 'VBBK'
+            ID                      = 'Z010'
+            LANGUAGE                = 'A'
+            NAME                    = V_VBELN1"'011700047'"VBELV_OR "V_VBELN "TR
+       IMPORTING
+            HEADER                  = TEXTHEADER
+       TABLES
+            LINES                   = Text1"it_tlines
+       EXCEPTIONS
+            ID                      = 1
+            LANGUAGE                = 2
+            NAME                    = 3
+            NOT_FOUND               = 4
+            OBJECT                  = 5
+            REFERENCE_CHECK         = 6
+            WRONG_ACCESS_TO_ARCHIVE = 7
+            OTHERS                  = 8.
+
+
+
+       CLEAR : is_tlines ,
+       lv_char,
+       v_text ,
+       w_lines ,
+       w_idx   .
+
+CALL FUNCTION 'READ_TEXT'
+       EXPORTING
+            OBJECT                  = 'VBBK'
+            ID                      = 'Z009'
+            LANGUAGE                = 'A'
+            NAME                    = V_VBELN1"'011700047'"VBELV_OR "V_VBELN "TR
+       IMPORTING
+            HEADER                  = TEXTHEADER
+       TABLES
+            LINES                   = Text2"it_tlines
+       EXCEPTIONS
+            ID                      = 1
+            LANGUAGE                = 2
+            NAME                    = 3
+            NOT_FOUND               = 4
+            OBJECT                  = 5
+            REFERENCE_CHECK         = 6
+            WRONG_ACCESS_TO_ARCHIVE = 7
+            OTHERS                  = 8.
+
+
+ENDIF.
+CLEAR V_VBELN1.
+Data :  TextSD Type TDLINE ,TextfD TYPE TDLINE,
+       Textsv Type TDLINE ,TextfV TYPE TDLINE.
+
+* To find Text Note
+Loop at Text2 into TextSD.
+  CONCATENATE TextfD  textsD into TextfD SEPARATED BY ' '.
+  ENDLOOP.
+  IT_OUTPUT-CAR = TextfD.
+  REPLACE ALL OCCURRENCES OF SUBSTRING '*' IN wa_output1-CAR WITH ''.
+
+   TextfD = ''.
+
+   Loop at Text1 into TextSV.
+  CONCATENATE TextfV  textsV into TextfV SEPARATED BY ' '.
+  ENDLOOP.
+  IT_OUTPUT-DRIVER = TextfV.
+  REPLACE ALL OCCURRENCES OF SUBSTRING '*' IN IT_OUTPUT-DRIVER WITH ''.
+
+   TextfV = ''.
+  CLEAR : V_CAR,V_DRIVER.
+      IF  IT_OUTPUT-DRIVER IS INITIAL.
+           SELECT SINGLE KUNNR FROM VBPA INTO V_CAR WHERE VBELN EQ IT_OUTPUT-VBELN AND PARVW EQ 'Z2'.
+           SELECT SINGLE KUNNR FROM VBPA INTO V_DRIVER WHERE VBELN EQ IT_OUTPUT-VBELN AND PARVW EQ 'Z1'.
+             SELECT SINGLE  KNA1~NAME1 FROM KNA1 INTO IT_OUTPUT-CAR WHERE KUNNR = V_CAR.
+               SELECT SINGLE KNA1~NAME1 FROM KNA1 INTO IT_OUTPUT-DRIVER WHERE KUNNR = V_DRIVER.
+   ENDIF.
+*  break yalsabri.
+*   ------------------------------end driver and car name
+
+*    READ TABLE IT_VBPA WITH KEY VBELN = IT_OUTPUT-VBELN KUNNR = IT_OUTPUT-KUNNR BINARY SEARCH.
+*    IF SY-SUBRC = 0.
+      MODIFY IT_OUTPUT TRANSPORTING BEZEI BEZEI2 VTEXT SO SO_NO KNUMV KBETR KWERT NETWR NETPR NETWR_VBRP MWSBP_VBRP total_VBRP
+                                    DRIVER CAR FKPOS FKNUM  NETWR EBELN  LBLNI ERNAM FKPTY KALSM KOSTY KNTTP.
+*    ELSE.
+*      DELETE IT_OUTPUT INDEX LV_INDEX.
+*    ENDIF.
+
+    CLEAR : IT_OUTPUT , VBPA, VFKP , LV_REPOS , LV_INDEX , IT_VBPA.
+  ENDLOOP.
+
+
+ENDFORM.
+*&---------------------------------------------------------------------*
+*&      Form  BUILD_CATALOG
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+*  -->  p1        text
+*  <--  p2        text
+*----------------------------------------------------------------------*
+FORM BUILD_CATALOG .
+
+
+
+
+  wa_fieldcat-fieldname = 'LIFNR'.
+  wa_fieldcat-seltext_m = 'Service Agent'.
+  WA_FIELDCAT-OUTPUTLEN = '14'.
+  APPEND wa_fieldcat TO it_fieldcat.
+
+  CLEAR wa_fieldcat.
+
+  wa_fieldcat-fieldname = 'NAME1'.
+  wa_fieldcat-seltext_m = 'Service Agent name'.
+  WA_FIELDCAT-OUTPUTLEN = '34'.
+  APPEND wa_fieldcat TO it_fieldcat.
+
+  CLEAR wa_fieldcat.
+
+  wa_fieldcat-fieldname = 'VSART'.
+  wa_fieldcat-seltext_m = 'Shipping Type'.
+  WA_FIELDCAT-OUTPUTLEN = '10'.
+  APPEND wa_fieldcat TO it_fieldcat.
+
+  CLEAR wa_fieldcat.
+
+  wa_fieldcat-fieldname = 'BEZEI'.
+  wa_fieldcat-seltext_m = 'Shipping Type Desc'.
+  WA_FIELDCAT-OUTPUTLEN = '24'.
+  APPEND wa_fieldcat TO it_fieldcat.
+
+  CLEAR wa_fieldcat.
+
+  wa_fieldcat-fieldname = 'EXTI1'.
+  wa_fieldcat-seltext_m = 'Driver'.
+  WA_FIELDCAT-OUTPUTLEN = '24'.
+  APPEND wa_fieldcat TO it_fieldcat.
+
+  CLEAR wa_fieldcat.
+
+  wa_fieldcat-fieldname = 'SIGNI'.
+  wa_fieldcat-seltext_m = 'Car'.
+  WA_FIELDCAT-OUTPUTLEN = '14'.
+  APPEND wa_fieldcat TO it_fieldcat.
+
+  CLEAR wa_fieldcat.
+
+  wa_fieldcat-fieldname = 'TKNUM'.
+  wa_fieldcat-seltext_m = 'Ship No'.
+  WA_FIELDCAT-OUTPUTLEN = '10'.
+  APPEND wa_fieldcat TO it_fieldcat.
+
+  CLEAR wa_fieldcat.
+
+  wa_fieldcat-fieldname = 'KUNNR'.
+  wa_fieldcat-seltext_m = 'Customer No'.
+  WA_FIELDCAT-OUTPUTLEN = '10'.
+  APPEND wa_fieldcat TO it_fieldcat.
+
+  CLEAR wa_fieldcat.
+
+
+  wa_fieldcat-fieldname = 'NAME2'.
+  wa_fieldcat-seltext_m = 'Customer Name'.
+  WA_FIELDCAT-OUTPUTLEN = '10'.
+  APPEND wa_fieldcat TO it_fieldcat.
+
+  CLEAR wa_fieldcat.
+
+  wa_fieldcat-fieldname = 'VBELN'.
+  wa_fieldcat-seltext_m = 'Delivery'.
+  WA_FIELDCAT-OUTPUTLEN = '10'.
+  APPEND wa_fieldcat TO it_fieldcat.
+
+  CLEAR wa_fieldcat.
+
+
+  wa_fieldcat-fieldname = 'TPNUM'.
+  wa_fieldcat-seltext_m = 'Item'.
+  WA_FIELDCAT-OUTPUTLEN = '10'.
+  APPEND wa_fieldcat TO it_fieldcat.
+
+  CLEAR wa_fieldcat.
+
+
+  wa_fieldcat-fieldname = 'POSNR'.
+  wa_fieldcat-seltext_m = 'Delivery Item'.
+  WA_FIELDCAT-OUTPUTLEN = '10'.
+  APPEND wa_fieldcat TO it_fieldcat.
+
+  CLEAR wa_fieldcat.
+
+  wa_fieldcat-fieldname = 'MATNR'.
+  wa_fieldcat-seltext_m = 'Material'.
+  WA_FIELDCAT-OUTPUTLEN = '18'.
+  APPEND wa_fieldcat TO it_fieldcat.
+
+  CLEAR wa_fieldcat.
+
+  wa_fieldcat-fieldname = 'ARKTX'.
+  wa_fieldcat-seltext_m = 'Material Desc.'.
+  WA_FIELDCAT-OUTPUTLEN = '34'.
+  APPEND wa_fieldcat TO it_fieldcat.
+
+  CLEAR wa_fieldcat.
+
+  wa_fieldcat-fieldname = 'MFRGR'.
+  wa_fieldcat-seltext_m = 'Material FG'.
+  WA_FIELDCAT-OUTPUTLEN = '14'.
+  APPEND wa_fieldcat TO it_fieldcat.
+
+  CLEAR wa_fieldcat.
+  wa_fieldcat-fieldname = 'BEZEI2'.
+  wa_fieldcat-seltext_m = 'Material FG Desc'.
+  WA_FIELDCAT-OUTPUTLEN = '21'.
+  APPEND wa_fieldcat TO it_fieldcat.
+
+  CLEAR wa_fieldcat.
+  wa_fieldcat-fieldname = 'LFIMG'.
+  wa_fieldcat-seltext_m = 'Quantity'.
+  WA_FIELDCAT-OUTPUTLEN = '17'.
+  APPEND wa_fieldcat TO it_fieldcat.
+
+  CLEAR wa_fieldcat.
+  wa_fieldcat-fieldname = 'MEINS'.
+  wa_fieldcat-seltext_m = 'UOM'.
+  WA_FIELDCAT-OUTPUTLEN = '10'.
+  APPEND wa_fieldcat TO it_fieldcat.
+
+  CLEAR wa_fieldcat.
+  wa_fieldcat-fieldname = 'VOLUM'.
+  wa_fieldcat-seltext_m = 'Volume'.
+  WA_FIELDCAT-OUTPUTLEN = '14'.
+  APPEND wa_fieldcat TO it_fieldcat.
+
+  CLEAR wa_fieldcat.
+  wa_fieldcat-fieldname = 'VOLEH'.
+  wa_fieldcat-seltext_m = 'Vol. Unit'.
+  WA_FIELDCAT-OUTPUTLEN = '8'.
+  APPEND wa_fieldcat TO it_fieldcat.
+
+
+  CLEAR wa_fieldcat.
+
+  wa_fieldcat-fieldname = 'KBETR'.
+  wa_fieldcat-seltext_m = 'Price / ton'.
+  WA_FIELDCAT-OUTPUTLEN = '18'.
+  APPEND wa_fieldcat TO it_fieldcat.
+
+  CLEAR wa_fieldcat.
+
+  wa_fieldcat-fieldname = 'KWERT'.
+  wa_fieldcat-seltext_m = 'Total price value'.
+  WA_FIELDCAT-OUTPUTLEN = '18'.
+  APPEND wa_fieldcat TO it_fieldcat.
+
+  CLEAR wa_fieldcat.
+
+  wa_fieldcat-fieldname = 'WERKS'.
+  wa_fieldcat-seltext_m = 'Plant'.
+  WA_FIELDCAT-OUTPUTLEN = '10'.
+  APPEND wa_fieldcat TO it_fieldcat.
+
+  CLEAR wa_fieldcat.
+
+  wa_fieldcat-fieldname = 'LGORT'.
+  wa_fieldcat-seltext_m = 'Storage Location'.
+  WA_FIELDCAT-OUTPUTLEN = '11'.
+  APPEND wa_fieldcat TO it_fieldcat.
+
+  CLEAR wa_fieldcat.
+
+  wa_fieldcat-fieldname = 'NETPR'.
+  wa_fieldcat-seltext_m = 'Service Net price / item'.
+  WA_FIELDCAT-OUTPUTLEN = '12'.
+  APPEND wa_fieldcat TO it_fieldcat.
+
+  CLEAR wa_fieldcat.
+
+  wa_fieldcat-fieldname = 'NETWR'.
+  wa_fieldcat-seltext_m = 'Service Net value'.
+  WA_FIELDCAT-OUTPUTLEN = '13'.
+  APPEND wa_fieldcat TO it_fieldcat.
+
+  CLEAR wa_fieldcat.
+
+
+  wa_fieldcat-fieldname = 'DALEN'.
+  wa_fieldcat-seltext_m = 'Loading END Date'.
+  WA_FIELDCAT-OUTPUTLEN = '14'.
+  APPEND wa_fieldcat TO it_fieldcat.
+
+  CLEAR wa_fieldcat.
+
+  wa_fieldcat-fieldname = 'LZONE'.
+  wa_fieldcat-seltext_m = 'TR Zone'.
+  WA_FIELDCAT-OUTPUTLEN = '10'.
+  APPEND wa_fieldcat TO it_fieldcat.
+
+  CLEAR wa_fieldcat.
+
+
+  wa_fieldcat-fieldname = 'VTEXT'.
+  wa_fieldcat-seltext_m = 'TR Zone Desc'.
+  WA_FIELDCAT-OUTPUTLEN = '20'.
+  APPEND wa_fieldcat TO it_fieldcat.
+
+  CLEAR wa_fieldcat.
+
+ wa_fieldcat-fieldname = 'payer'.
+  wa_fieldcat-seltext_m = 'Payer'.
+  WA_FIELDCAT-OUTPUTLEN = '20'.
+  APPEND wa_fieldcat TO it_fieldcat.
+
+  CLEAR wa_fieldcat.
+
+
+ wa_fieldcat-fieldname = 'payer_n'.
+  wa_fieldcat-seltext_m = 'Payer Name'.
+  WA_FIELDCAT-OUTPUTLEN = '20'.
+  APPEND wa_fieldcat TO it_fieldcat.
+
+  CLEAR wa_fieldcat.
+
+  wa_fieldcat-fieldname = 'ERDAT'.
+  wa_fieldcat-seltext_m = 'DELIVRY CREATED DATE'.
+  WA_FIELDCAT-OUTPUTLEN = '20'.
+  APPEND wa_fieldcat TO it_fieldcat.
+
+  CLEAR wa_fieldcat.
+
+
+  wa_fieldcat-fieldname = 'NETWR_VBRP'.
+  wa_fieldcat-seltext_m = 'Net Value / INV'.
+  WA_FIELDCAT-OUTPUTLEN = '20'.
+  APPEND wa_fieldcat TO it_fieldcat.
+
+  CLEAR wa_fieldcat.
+
+  wa_fieldcat-fieldname = 'MWSBP_VBRP'.
+  wa_fieldcat-seltext_m = 'TAX Value / INV'.
+  WA_FIELDCAT-OUTPUTLEN = '20'.
+  APPEND wa_fieldcat TO it_fieldcat.
+
+  CLEAR wa_fieldcat.
+
+  wa_fieldcat-fieldname = 'total_VBRP'.
+  wa_fieldcat-seltext_m = 'Tot Value / INV'.
+  WA_FIELDCAT-OUTPUTLEN = '20'.
+  APPEND wa_fieldcat TO it_fieldcat.
+
+  CLEAR wa_fieldcat.
+
+wa_fieldcat-fieldname =  'CAR' .
+  wa_fieldcat-seltext_m =  'السيارة' .
+  WA_FIELDCAT-OUTPUTLEN = '20'.
+  APPEND wa_fieldcat TO it_fieldcat.
+
+  CLEAR wa_fieldcat.
+
+  wa_fieldcat-fieldname =  'DRIVER' .
+  wa_fieldcat-seltext_m =  'اسم السائق' .
+  WA_FIELDCAT-OUTPUTLEN = '20'.
+  APPEND wa_fieldcat TO it_fieldcat.
+  CLEAR wa_fieldcat.
+
+    wa_fieldcat-fieldname =  'VGBEL' .
+  wa_fieldcat-seltext_m =  'امر البيع' .
+  WA_FIELDCAT-OUTPUTLEN = '20'.
+  APPEND wa_fieldcat TO it_fieldcat.
+  CLEAR wa_fieldcat.
+
+    wa_fieldcat-fieldname =  'BWART' .
+  wa_fieldcat-seltext_m =  'نوع الحركة' .
+  WA_FIELDCAT-OUTPUTLEN = '20'.
+  APPEND wa_fieldcat TO it_fieldcat.
+  CLEAR wa_fieldcat.
+
+      wa_fieldcat-fieldname =  'FKPOS' .
+  wa_fieldcat-seltext_m =  'Item' .
+  WA_FIELDCAT-OUTPUTLEN = '20'.
+  APPEND wa_fieldcat TO it_fieldcat.
+  CLEAR wa_fieldcat.
+
+        wa_fieldcat-fieldname =  'FKNUM' .
+  wa_fieldcat-seltext_m =  'رقم تكلفه الشحن' .
+  WA_FIELDCAT-OUTPUTLEN = '20'.
+  APPEND wa_fieldcat TO it_fieldcat.
+  CLEAR wa_fieldcat.
+
+         wa_fieldcat-fieldname =  'EBELN' .
+  wa_fieldcat-seltext_m =  'أمر شراء الخدمه' .
+  WA_FIELDCAT-OUTPUTLEN = '20'.
+  APPEND wa_fieldcat TO it_fieldcat.
+  CLEAR wa_fieldcat.
+
+          wa_fieldcat-fieldname =  'LBLNI' .
+  wa_fieldcat-seltext_m =  'صحيفة الإدخال' .
+  WA_FIELDCAT-OUTPUTLEN = '20'.
+  APPEND wa_fieldcat TO it_fieldcat.
+  CLEAR wa_fieldcat.
+
+            wa_fieldcat-fieldname =  'ERNAM' .
+  wa_fieldcat-seltext_m =  'منشأ بواسطة' .
+  WA_FIELDCAT-OUTPUTLEN = '20'.
+  APPEND wa_fieldcat TO it_fieldcat.
+  CLEAR wa_fieldcat.
+
+              wa_fieldcat-fieldname =  'FKPTY' .
+  wa_fieldcat-seltext_m =  'Item category' .
+  WA_FIELDCAT-OUTPUTLEN = '20'.
+  APPEND wa_fieldcat TO it_fieldcat.
+  CLEAR wa_fieldcat.
+
+                wa_fieldcat-fieldname =  'KALSM' .
+  wa_fieldcat-seltext_m =  'Pricing Procedure' .
+  WA_FIELDCAT-OUTPUTLEN = '20'.
+  APPEND wa_fieldcat TO it_fieldcat.
+  CLEAR wa_fieldcat.
+
+                  wa_fieldcat-fieldname =  'KOSTY' .
+  wa_fieldcat-seltext_m =  'نوع التكلفه' .
+  WA_FIELDCAT-OUTPUTLEN = '20'.
+  APPEND wa_fieldcat TO it_fieldcat.
+  CLEAR wa_fieldcat.
+
+  wa_fieldcat-fieldname =  'KNTTP' .
+  wa_fieldcat-seltext_m =  'Acct Assignment Cat.' .
+  WA_FIELDCAT-OUTPUTLEN = '20'.
+  APPEND wa_fieldcat TO it_fieldcat.
+  CLEAR wa_fieldcat.
+
+
+*payer_n
+*   wa_fieldcat-fieldname = 'SO'.
+*  wa_fieldcat-seltext_m = 'Sales Order'.
+*  WA_FIELDCAT-OUTPUTLEN = '16'.
+*  APPEND wa_fieldcat TO it_fieldcat.
+*
+*  CLEAR wa_fieldcat.
+*
+*  wa_fieldcat-fieldname = 'SO_NO'.
+*  wa_fieldcat-seltext_m = 'Sales Order Item'.
+*  WA_FIELDCAT-OUTPUTLEN = '11'.
+*  APPEND wa_fieldcat TO it_fieldcat.
+*
+*  CLEAR wa_fieldcat.
+*
+*    wa_fieldcat-fieldname = 'KNUMV'.
+*  wa_fieldcat-seltext_m = 'Cond. No'.
+*  WA_FIELDCAT-OUTPUTLEN = '11'.
+*  APPEND wa_fieldcat TO it_fieldcat.
+*
+*  CLEAR wa_fieldcat.
+
+ENDFORM.
+**
+**
+
+FORM REUSE_ALV .
+  data : gd_repid like sy-repid.
+
+  gd_repid = sy-repid.
+  CALL FUNCTION 'REUSE_ALV_GRID_DISPLAY'
+    EXPORTING
+      IT_FIELDCAT              = it_fieldcat
+*     I_SAVE                   = 'A'
+      i_callback_program       = gd_repid
+      I_CALLBACK_PF_STATUS_SET = 'SET_PF_STATUS'
+       i_callback_user_command         = 'USER_COMMAND'
+      is_layout                = gs_layout_k
+      is_print                 = gs_print_k
+      it_sort                  = gt_sort_k
+      it_filter                = gt_filter_k
+      it_event_exit            = lt_event_exit
+       I_SAVE                         = 'A'
+
+*     is_variant               = gs_variant
+    TABLES
+      T_OUTTAB                 = it_output
+    EXCEPTIONS
+      PROGRAM_ERROR            = 1
+      OTHERS                   = 2.
+
+  IF SY-SUBRC <> 0.
+* Implement suitable error handling here
+  ENDIF.
+
+ENDFORM.
+
+FORM SET_PF_STATUS USING RT_EXTAB TYPE SLIS_T_EXTAB.
+  SET PF-STATUS 'ZGUI_STATUS'.
+  "Copy of 'STANDARD' pf_status from fgroup SALV
+ENDFORM.
+
+
+*------------------------------------------------------------------*
+*       FORM USER_COMMAND                                          *
+*------------------------------------------------------------------*
+*       --> R_UCOMM                                                *
+*       --> RS_SELFIELD                                            *
+*------------------------------------------------------------------*
+FORM user_command USING r_ucomm LIKE sy-ucomm
+                  rs_selfield TYPE slis_selfield.
+  DATA: gd_repid LIKE sy-repid,
+  ref_grid TYPE REF TO cl_gui_alv_grid.
+  IF ref_grid IS INITIAL.
+    CALL FUNCTION 'GET_GLOBALS_FROM_SLVC_FULLSCR'
+      IMPORTING
+        e_grid = ref_grid.
+  ENDIF.
+  IF NOT ref_grid IS INITIAL.
+    CALL METHOD ref_grid->check_changed_data .
+  ENDIF.
+* Check function code
+
+  CASE r_ucomm.
+    WHEN 'NTE'.
+
+     PERFORM FETCH_DATA.
+     PERFORM REUSE_ALV.
+
+    WHEN 'F03'.
+*     LEAVE TO SCREEN 0.
+      LEAVE TO SCREEN 0.
+
+          WHEN 'F12'.
+*     LEAVE TO SCREEN 0.
+      LEAVE TO SCREEN 0.
+
+          WHEN 'F15'.
+*     LEAVE TO SCREEN 0.
+      LEAVE TO SCREEN 0.
+    WHEN 'SAL'.
+
+      PERFORM REUSE_ALV.
+    WHEN 'DAL'.
+
+      PERFORM REUSE_ALV.
+     WHEN 'CREATE'.
+       CLEAR wa_output.
+
+  ENDCASE.
+ENDFORM.                    "user_command
