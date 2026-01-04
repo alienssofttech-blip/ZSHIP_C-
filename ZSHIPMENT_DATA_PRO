@@ -164,11 +164,18 @@ FORM FETCH_DATA .
            kunnr TYPE kna1-kunnr,
            name1 TYPE kna1-name1,
          END OF ty_kna1_name.
-  DATA: lt_vbpa_z      TYPE HASHED TABLE OF vbpa WITH UNIQUE KEY vbeln parvw,
-        ls_vbpa_z      TYPE vbpa,
+  TYPES: BEGIN OF ty_vbpa_z,
+           vbeln TYPE vbpa-vbeln,
+           posnr TYPE vbpa-posnr,
+           parvw TYPE vbpa-parvw,
+           kunnr TYPE vbpa-kunnr,
+         END OF ty_vbpa_z.
+  DATA: lt_vbpa_z      TYPE HASHED TABLE OF ty_vbpa_z WITH UNIQUE KEY vbeln posnr parvw,
+        ls_vbpa_z      TYPE ty_vbpa_z,
         lt_kna1_names  TYPE HASHED TABLE OF ty_kna1_name WITH UNIQUE KEY kunnr,
         ls_kna1_name   TYPE ty_kna1_name,
-        lt_kna1_keys   TYPE SORTED TABLE OF kna1-kunnr WITH UNIQUE KEY table_line.
+        lt_kna1_keys   TYPE SORTED TABLE OF kna1-kunnr WITH UNIQUE KEY table_line,
+        lv_vbpa_posnr  TYPE vbpa-posnr VALUE '000000'.
 
 
 * (  LIKP
@@ -369,9 +376,9 @@ select LFA1~LIFNR LFA1~NAME1 VTTK~TKNUM  VTTK~VSART VTTK~EXTI1 VTTK~SIGNI KNA1~K
       AND   POSNR = IT_OUTPUT-POSNR.
     SORT IT_VFSI BY VBELN POSNR KNUMV KPOSN.
 
-    SELECT vbeln parvw kunnr
+    SELECT vbeln posnr parvw kunnr
       FROM vbpa
-      INTO TABLE lt_vbpa_z
+      INTO CORRESPONDING FIELDS OF TABLE lt_vbpa_z
       FOR ALL ENTRIES IN IT_OUTPUT
       WHERE vbeln = IT_OUTPUT-vbeln
       AND   parvw IN ( 'Z1', 'Z2' ).
@@ -646,11 +653,11 @@ Loop at Text2 into TextSD.
    TextfV = ''.
   CLEAR : V_CAR,V_DRIVER.
       IF  IT_OUTPUT-DRIVER IS INITIAL.
-           READ TABLE lt_vbpa_z WITH TABLE KEY vbeln = IT_OUTPUT-VBELN parvw = 'Z2' INTO ls_vbpa_z.
+           READ TABLE lt_vbpa_z WITH TABLE KEY vbeln = IT_OUTPUT-VBELN posnr = lv_vbpa_posnr parvw = 'Z2' INTO ls_vbpa_z.
            IF sy-subrc = 0.
              V_CAR = ls_vbpa_z-kunnr.
            ENDIF.
-           READ TABLE lt_vbpa_z WITH TABLE KEY vbeln = IT_OUTPUT-VBELN parvw = 'Z1' INTO ls_vbpa_z.
+           READ TABLE lt_vbpa_z WITH TABLE KEY vbeln = IT_OUTPUT-VBELN posnr = lv_vbpa_posnr parvw = 'Z1' INTO ls_vbpa_z.
            IF sy-subrc = 0.
              V_DRIVER = ls_vbpa_z-kunnr.
            ENDIF.
